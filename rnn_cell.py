@@ -1,3 +1,4 @@
+from ast import Tuple
 import math
 from typing import Optional
 import torch
@@ -54,15 +55,44 @@ class RNNCell(RNNCellBase):
         device=None,
         dtype=None,
     ) -> None:
+        """An Elman RNN cell with tanh or ReLU non-linearity.
+
+        .. math::
+
+            h' = \tanh(W_{ih} x + b_{ih}  +  W_{hh} h + b_{hh})
+
+        If :attr:`nonlinearity` is `'relu'`, then ReLU is used in place of tanh.
+
+        Args:
+            input_size: The number of expected features in the input `x`
+            hidden_size: The number of features in the hidden state `h`
+            bias: If ``False``, then the layer does not use bias weights `b_ih` and `b_hh`.
+                Default: ``True``
+            nonlinearity: The non-linearity to use. Can be either ``'tanh'`` or ``'relu'``. Default: ``'tanh'``
+
+        """
         factory_kwargs = {"device": device, "dtype": dtype}
         super(RNNCell, self).__init__(
             input_size, hidden_size, bias, num_chunks=1, **factory_kwargs
         )
+        
         self.nonlinearity = nonlinearity
         if self.nonlinearity not in ["tanh", "relu"]:
             raise ValueError("Invalid nonlinearity selected for RNN.")
 
     def forward(self, input: Tensor, hx: Optional[Tensor] = None) -> Tensor:
+        """
+        Args:
+            input (Tensor): tensor containing input features
+                - shape : (batch_size, input_size) or (input_size)
+            hx (Optional[Tensor], optional): tensor containing the initial hidden state. 
+                - Defaults to None.
+                - shape : (batch_size, hidden_size) or (hidden_size)
+
+        Returns:
+            Tensor: tensor containing the next hidden state for each element in the batch
+                - shape : (batch_size, hidden_size)
+        """
         if hx is None:
             hx = torch.zeros(
                 input.size(0), self.hidden_size, dtype=input.dtype, device=input.device
@@ -87,12 +117,51 @@ class LSTMCell(RNNCellBase):
         device=None,
         dtype=None,
     ) -> None:
+        """A long short-term memory (LSTM) cell.
+
+        .. math::
+
+            \begin{array}{ll}
+            i = \sigma(W_{ii} x + b_{ii} + W_{hi} h + b_{hi}) \\
+            f = \sigma(W_{if} x + b_{if} + W_{hf} h + b_{hf}) \\
+            g = \tanh(W_{ig} x + b_{ig} + W_{hg} h + b_{hg}) \\
+            o = \sigma(W_{io} x + b_{io} + W_{ho} h + b_{ho}) \\
+            c' = f * c + i * g \\
+            h' = o * \tanh(c') \\
+            \end{array}
+
+        where :math:`\sigma` is the sigmoid function, and :math:`*` is the Hadamard product.
+
+        Args:
+            input_size (int): The number of expected features in the input `x`
+            hidden_size (int): The number of features in the hidden state `h`
+            bias (bool, optional): If ``False``, then the layer does not use bias weights `b_ih` and
+            `b_hh`. 
+                - Defaults to True.
+            
+        """
         factory_kwargs = {"device": device, "dtype": dtype}
         super(LSTMCell, self).__init__(
-            input_size, 4 * hidden_size, bias, num_chunks=4, **factory_kwargs
+            input_size, hidden_size, bias, num_chunks=4, **factory_kwargs
         )
 
-    def forward(self, input: Tensor, hx: Optional[Tensor] = None) -> Tensor:
+    def forward(self, input: Tensor, hx: Optional[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, Tensor]:
+        """
+        Args:
+            input (Tensor): tensor containing input features
+                - shape : (batch_size, input_size) or (input_size)
+            hx (Optional[Tuple[Tensor, Tensor]], optional): tensor containing the initial hidden state. 
+                - Defaults to None.
+                - shape : (h_0, c_0)
+                    - h_0 : (batch_size, hidden_size) or (hidden_size)
+                    - c_0 : (batch_size, hidden_size) or (hidden_size)
+
+        Returns:
+            Tuple[Tensor, Tensor]: tensor containing the next hidden state for each element in the batch
+            - shape : (h_1, c_1)
+                    - h_1 : (batch_size, hidden_size) or (hidden_size)
+                    - c_1 : (batch_size, hidden_size) or (hidden_size)
+        """
         if hx is None:
             hx = torch.zeros(
                 input.size(0), self.hidden_size, dtype=input.dtype, device=input.device
@@ -125,12 +194,43 @@ class GRUCell(RNNCellBase):
         device=None,
         dtype=None,
     ) -> None:
+        """A gated recurrent unit (GRU) cell
+
+        .. math::
+
+            \begin{array}{ll}
+            r = \sigma(W_{ir} x + b_{ir} + W_{hr} h + b_{hr}) \\
+            z = \sigma(W_{iz} x + b_{iz} + W_{hz} h + b_{hz}) \\
+            n = \tanh(W_{in} x + b_{in} + r * (W_{hn} h + b_{hn})) \\
+            h' = (1 - z) * n + z * h
+            \end{array}
+
+        where :math:`\sigma` is the sigmoid function, and :math:`*` is the Hadamard product.
+
+        Args:
+            input_size: The number of expected features in the input `x`
+            hidden_size: The number of features in the hidden state `h`
+            bias: If ``False``, then the layer does not use bias weights `b_ih` and
+                `b_hh`. Default: ``True``
+        """
         factory_kwargs = {"device": device, "dtype": dtype}
         super(GRUCell, self).__init__(
-            input_size, 3 * hidden_size, bias, num_chunks=3, **factory_kwargs
+            input_size, hidden_size, bias, num_chunks=3, **factory_kwargs
         )
 
     def forward(self, input: Tensor, hx: Optional[Tensor] = None) -> Tensor:
+        """
+        Args:
+            input (Tensor): tensor containing input features
+                - shape : (batch_size, input_size) or (input_size)
+            hx (Optional[Tensor], optional): tensor containing the initial hidden state. 
+                - Defaults to None.
+                - shape : (batch_size, hidden_size) or (hidden_size)
+
+        Returns:
+            Tensor: tensor containing the next hidden state for each element in the batch
+                - shape : (batch_size, hidden_size)
+        """
         if hx is None:
             hx = torch.zeros(
                 input.size(0), self.hidden_size, dtype=input.dtype, device=input.device
