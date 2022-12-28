@@ -1,8 +1,9 @@
 import math
 from typing import Optional, Tuple
+
 import torch
-from torch import Tensor
 import torch.nn as nn
+from torch import Tensor
 
 
 class RNNCellBase(nn.Module):
@@ -43,7 +44,6 @@ class RNNCellBase(nn.Module):
             nn.init.uniform_(weight, -stdv, stdv)
 
 
-
 class RNNCell(RNNCellBase):
     def __init__(
         self,
@@ -74,7 +74,7 @@ class RNNCell(RNNCellBase):
         super(RNNCell, self).__init__(
             input_size, hidden_size, bias, num_chunks=1, **factory_kwargs
         )
-        
+
         self.nonlinearity = nonlinearity
         if self.nonlinearity not in ["tanh", "relu"]:
             raise ValueError("Invalid nonlinearity selected for RNN.")
@@ -84,7 +84,7 @@ class RNNCell(RNNCellBase):
         Args:
             input (Tensor): tensor containing input features
                 - shape : (batch_size, input_size) or (input_size)
-            hx (Optional[Tensor], optional): tensor containing the initial hidden state. 
+            hx (Optional[Tensor], optional): tensor containing the initial hidden state.
                 - Defaults to None.
                 - shape : (batch_size, hidden_size) or (hidden_size)
 
@@ -144,12 +144,14 @@ class LSTMCell(RNNCellBase):
             
         """
 
-    def forward(self, input: Tensor, hx: Optional[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, Tensor]:
+    def forward(
+        self, input: Tensor, hx: Optional[Tuple[Tensor, Tensor]]
+    ) -> Tuple[Tensor, Tensor]:
         """
         Args:
             input (Tensor): tensor containing input features
                 - shape : (batch_size, input_size) or (input_size)
-            hx (Optional[Tuple[Tensor, Tensor]], optional): tensor containing the initial hidden state. 
+            hx (Optional[Tuple[Tensor, Tensor]], optional): tensor containing the initial hidden state.
                 - Defaults to None.
                 - shape : (h_0, c_0)
                     - h_0 : (batch_size, hidden_size) or (hidden_size)
@@ -222,7 +224,7 @@ class GRUCell(RNNCellBase):
         Args:
             input (Tensor): tensor containing input features
                 - shape : (batch_size, input_size) or (input_size)
-            hx (Optional[Tensor], optional): tensor containing the initial hidden state. 
+            hx (Optional[Tensor], optional): tensor containing the initial hidden state.
                 - Defaults to None.
                 - shape : (batch_size, hidden_size) or (hidden_size)
 
