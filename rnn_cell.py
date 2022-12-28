@@ -1,4 +1,7 @@
 import math
+from typing import Optional
+import torch
+from torch import Tensor
 import torch.nn as nn
 
 
@@ -38,3 +41,38 @@ class RNNCellBase(nn.Module):
         stdv = 1.0 / math.sqrt(self.hidden_size) if self.hidden_size > 0 else 0
         for weight in self.parameters():
             nn.init.uniform_(weight, -stdv, stdv)
+
+
+
+class RNNCell(RNNCellBase):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        bias: bool = True,
+        nonlinearity: str = "tanh",
+        device=None,
+        dtype=None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+        super(RNNCell, self).__init__(
+            input_size, hidden_size, bias, num_chunks=1, **factory_kwargs
+        )
+        self.nonlinearity = nonlinearity
+        if self.nonlinearity not in ["tanh", "relu"]:
+            raise ValueError("Invalid nonlinearity selected for RNN.")
+
+    def forward(self, input: Tensor, hx: Optional[Tensor] = None) -> Tensor:
+        if hx is None:
+            hx = torch.zeros(
+                input.size(0), self.hidden_size, dtype=input.dtype, device=input.device
+            )
+
+        hy = self.ih(input) + self.hh(hx)
+
+        if self.nonlinearity == "tanh":
+            ret = torch.tanh(hy)
+        else:
+            ret = torch.relu(hy)
+
+        return ret
