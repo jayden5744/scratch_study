@@ -1,6 +1,5 @@
-from ast import Tuple
 import math
-from typing import Optional
+from typing import Optional, Tuple
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -117,6 +116,10 @@ class LSTMCell(RNNCellBase):
         device=None,
         dtype=None,
     ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+        super(LSTMCell, self).__init__(
+            input_size, hidden_size, bias, num_chunks=4, **factory_kwargs
+        )
         """A long short-term memory (LSTM) cell.
 
         .. math::
@@ -140,10 +143,6 @@ class LSTMCell(RNNCellBase):
                 - Defaults to True.
             
         """
-        factory_kwargs = {"device": device, "dtype": dtype}
-        super(LSTMCell, self).__init__(
-            input_size, hidden_size, bias, num_chunks=4, **factory_kwargs
-        )
 
     def forward(self, input: Tensor, hx: Optional[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, Tensor]:
         """
@@ -158,7 +157,7 @@ class LSTMCell(RNNCellBase):
 
         Returns:
             Tuple[Tensor, Tensor]: tensor containing the next hidden state for each element in the batch
-            - shape : (h_1, c_1)
+                - shape : (h_1, c_1)
                     - h_1 : (batch_size, hidden_size) or (hidden_size)
                     - c_1 : (batch_size, hidden_size) or (hidden_size)
         """
