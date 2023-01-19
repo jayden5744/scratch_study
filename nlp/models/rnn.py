@@ -109,6 +109,10 @@ class RNN(RNNBase):
         """
         batch_dim = 0 if self.batch_first else 1
         sequence_dim = 1 if self.batch_first else 0
+        batch_size = input.size(batch_dim)
+        sequence_size = input.size(sequence_dim)
+        # print(f"batch_size: {batch_size}")
+        # print(f"sequence_size: {sequence_size}")
         # print(f"batch_dim: {batch_dim}")
         # print(f"sequence_dim: {sequence_dim}")
         is_batch = input.dim() == 3
@@ -132,11 +136,6 @@ class RNN(RNNBase):
         # input -> [N, L, H_in] or [L, N, H_in]
         # hx -> [num_layers, batch_size, H_out] or None
 
-        batch_size = input.size(batch_dim)
-        sequence_size = input.size(sequence_dim)
-        print(f"batch_size: {batch_size}")
-        print(f"sequence_size: {sequence_size}")
-
         if hx is None:
             hx = torch.zeros(
                 self.num_layers * self.num_directions,
@@ -147,7 +146,6 @@ class RNN(RNNBase):
             )
 
         # hx -> [num_layers * D, batch_size, H_out]
-
         hidden_state = []
         if self.bidirectional:
             next_hidden_f, next_hidden_b = [], []
