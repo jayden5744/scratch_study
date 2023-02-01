@@ -1,8 +1,13 @@
 import os
 import os.path as osp
 import shutil
+from abc import ABCMeta, abstractmethod
+from typing import List
 
 import sentencepiece as spm
+import torch
+from torch import Tensor
+from torch.utils.data import Dataset
 
 
 def exist_file(path: str) -> bool:
@@ -45,3 +50,85 @@ def create_or_load_tokenizer(
     sp = spm.SentencePieceProcessor()
     sp.load(model_path)
     return sp
+
+
+# 학습데이터 input, target
+# 평가데이터 input, target
+# 추론 : input
+class AbstractDataset(Dataset, metaclass=ABCMeta):
+    def __init__(
+        self, x_path: str, src_vocab: spm.SentencePieceProcessor, max_sequence_size: int
+    ) -> None:
+        self.src_data = open(x_path, "r", encoding="utf-8").readlines()
+        self.src_vocab = src_vocab
+        self.max_sequence_size = max_sequence_size
+        self.pad = src_vocab["<pad>"]
+
+    @abstractmethod
+    def __len__(self):
+        pass
+
+    @abstractmethod
+    def __getitem__(self, index):
+        return super().__getitem__(index)
+
+    @abstractmethod
+    def encoder_input2tensor(self, sentence: str) -> Tensor:
+        pass
+
+    @abstractmethod
+    def padding(self, idx_list: List[int]) -> List[int]:
+        pass
+
+
+class TrainDataset(AbstractDataset):
+    def __init__(
+        self,
+        x_path: str,
+        src_vocab: spm.SentencePieceProcessor,
+        y_path: str,
+        trg_vocab: spm.SentencePieceProcessor,
+        max_sequence_size: int,
+    ) -> None:
+        super(TrainDataset, self).__init__(x_path, src_vocab, max_sequence_size)
+        self.trg_data = open(y_path, "r", encoding="utf-8").readlines()
+        self.trg_vocab = trg_vocab
+        self.bos = self.trg_vocab["<s>"]
+        self.eos = self.trg_vocab["</s>"]
+
+    def __len__(self) -> int:
+        if len(self.src_data) != len(self.trg_data):
+            raise IndexError("not equal src_data, trg_data line size")
+        return len(self.src_data)
+
+    def __getitem__(self, index):
+        encoder_input = self.encoder_input2tensor(self.src_data[index])
+        decoder_input = self.decoder_input2tensor(self.trg_data[index])
+        # Todo: eos 토큰이 잘리는게 나은지 남겨두는 게 나은지는 논의해야할 사항
+        decoder_output = decoder_input[1:] + [self.eos]
+        return (
+            encoder_input,
+            torch.tensor(self.padding(decoder_input)),
+            torch.tensor(self.padding(decoder_output)),
+        )
+
+    def encoder_input2tensor(self, sentence: str) -> Tensor:
+        idx_list = self.src_vocab.EncodeAsIds(sentence)
+        idx_list = self.padding(idx_list)  # max_sequence_size 길이의 List
+        return torch.tensor(idx_list)
+
+    def decoder_input2tensor(self, sentence: str) -> Tensor:
+        idx_list = self.trg_vocab.EncodeAsIds(sentence)
+        idx_list.insert(0, self.bos)
+        if len(idx_list) > self.max_sequence_size:
+            idx_list = idx_list[: self.max_sequence_size]
+        return idx_list
+
+    def padding(self, idx_list: List[int]) -> List[int]:
+        if len(idx_list) < self.max_sequence_size:
+            idx_list = idx_list + [self.pad] * (self.max_sequence_size - len(idx_list))
+
+        else:
+            idx_list = idx_list[: self.max_sequence_size]
+
+        return idx_list
