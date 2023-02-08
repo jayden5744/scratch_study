@@ -132,3 +132,4 @@ dmypy.json
 *.vocab
 *.ko
 *.en
+.DS_Store
