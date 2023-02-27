@@ -133,3 +133,6 @@ dmypy.json
 *.ko
 *.en
 .DS_Store
+outputs/*
+*.csv
+*ipynb

@@ -1,0 +1,4 @@
+defaults:
+  - data: default
+  - model: seq2seq
+  - trainer: default
