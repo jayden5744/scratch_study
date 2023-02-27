@@ -1,1 +1,9 @@
 epochs: 100
+learning_rate: 5e-4
+
+# optimizer 
+optimizer: "Adam"   # choice of [Adam, AdamW]
+optimizer_b1: 0.9
+optimizer_b2: 0.999
+optimizer_e: 1e-08
+weight_decay: 0

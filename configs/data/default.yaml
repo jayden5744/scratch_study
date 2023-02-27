@@ -1,1 +1,22 @@
 project_name: "study_translation"
+folder_name: "sample"
+
+src_language: "ko"
+trg_language: "en"
+
+src_train_path: "data/${data.folder_name}/train.${data.src_language}"
+trg_train_path: "data/${data.folder_name}/train.${data.trg_language}"
+
+tokenizer: "unigram" # coice of [unigram, bpe, char, word]
+dictionary_path: "dictionary/${data.folder_name}"
+
+
+src_vocab_size: 8000
+trg_vocab_size: 8000
+
+
+# Token ID
+bos_id: 0
+eos_id: 1
+unk_id: 2
+pad_id: 3

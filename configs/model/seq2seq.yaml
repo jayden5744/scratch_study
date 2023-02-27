@@ -1,1 +1,14 @@
 model_type: "seq2seq"
+max_sequence_size: 50
+d_hidden: 512
+n_layers: 6
+mode: "lstm"
+dropout_rate: 0.3
+bidirectional: True
+bias: True
+batch_first: True
+
+
+# weight initialization of choice [he, xavier] and Weight distribution of choice [uniform, normal]
+weight_init: "xavier"
+weight_distribution: "uniform"

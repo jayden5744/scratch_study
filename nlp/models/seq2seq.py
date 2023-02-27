@@ -31,10 +31,6 @@ class Encoder(nn.Module):
             batch_first=batch_first,
         )
 
-        for m in self.modules():
-            if hasattr(m, "weight") and m.weight.dim() > 1:
-                nn.init.xavier_uniform_(m.weight.data)
-
     def forward(
         self,
         enc_input: Tensor,
@@ -116,10 +112,6 @@ class Decoder(nn.Module):
         )
         self.linear = nn.Linear(hidden_size, output_size)
         self.softmax = nn.LogSoftmax(dim=1)
-
-        for m in self.modules():
-            if hasattr(m, "weight") and m.weight.dim() > 1:
-                nn.init.xavier_uniform_(m.weight.data)
 
     def forward(
         self,
