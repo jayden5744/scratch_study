@@ -182,16 +182,40 @@ class Decoder(nn.Module):
 class Seq2Seq(nn.Module):
     def __init__(
         self,
-        encoder: Encoder,
-        decoder: Decoder,
+        enc_d_input: int,  # source language vocab size
+        dec_d_input: int,  # target language vocab size
+        d_hidden: int,
+        n_layers: int,
         max_sequence_size: int,
-        vocab_size: int,
+        mode: str = "lstm",
+        dropout_rate: float = 0.0,
+        bidirectional: bool = True,
+        bias: bool = True,
+        batch_first: bool = True,
     ) -> None:
         super().__init__()
-        self.encoder = encoder
-        self.decoder = decoder
+        self.encoder = Encoder(
+            input_size=enc_d_input,
+            hidden_size=d_hidden,
+            n_layers=n_layers,
+            dropout=dropout_rate,
+            mode=mode,
+            bidirectional=bidirectional,
+            bias=bias,
+            batch_first=batch_first,
+        )
+        self.decoder = Decoder(
+            output_size=dec_d_input,
+            hidden_size=d_hidden,
+            n_layers=n_layers,
+            dropout=dropout_rate,
+            mode=mode,
+            bidirectional=bidirectional,
+            bias=bias,
+            batch_first=batch_first,
+        )
         self.max_sequence_size = max_sequence_size
-        self.vocab_size = vocab_size
+        self.vocab_size = dec_d_input
 
     def forward(
         self,
