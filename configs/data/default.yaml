@@ -7,8 +7,13 @@ trg_language: "en"
 src_train_path: "data/${data.folder_name}/train.${data.src_language}"
 trg_train_path: "data/${data.folder_name}/train.${data.trg_language}"
 
+src_valid_path: "data/${data.folder_name}/valid.${data.src_language}"
+trg_valid_path: "data/${data.folder_name}/valid.${data.trg_language}"
+
 tokenizer: "unigram" # coice of [unigram, bpe, char, word]
 dictionary_path: "dictionary/${data.folder_name}"
+
+model_path: "SavedModel/${data.project_name}/${data.folder_name}"
 
 
 src_vocab_size: 8000
