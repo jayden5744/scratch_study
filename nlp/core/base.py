@@ -1,14 +1,14 @@
 from abc import ABC
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import sentencepiece as spm
 import torch.nn as nn
 from omegaconf import DictConfig
-from torch import Tensor
 from torch.utils.data import DataLoader, RandomSampler
 
 from ..datasets.data_helper import TrainDataset, create_or_load_tokenizer
 from ..models.seq2seq import Seq2Seq
+from ..utils.metrics import calculate_bleu
 
 
 class AbstractTools(ABC):
@@ -122,7 +122,9 @@ class AbstractTools(ABC):
     def print_result(
         input_sentence: str, predict_sentence: str, target_sentence: str
     ) -> None:
+        blue_score = calculate_bleu(predict_sentence, target_sentence)
         print(f"------- Test ------")
         print(f"Source      : {input_sentence}")
         print(f"Predict     : {predict_sentence}")
         print(f"Target      : {target_sentence}")
+        print(f"BLEU Score  : {blue_score}")
