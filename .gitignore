@@ -136,3 +136,6 @@ dmypy.json
 outputs/*
 *.csv
 *ipynb
+
+wandb
+SavedModel

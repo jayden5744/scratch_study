@@ -1,5 +1,5 @@
 import os
-
+import wandb
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
@@ -29,28 +29,35 @@ class Trainer(AbstractTools):
             label_smoothing=self.arg.trainer.label_smoothing_value,
         )
 
+        wandb.init(config=self.arg)
+        
+
     def train(self):
         print(f"The model {count_parameters(self.model)} trainerble parameters.")
+        wandb.watch(self.model)
         epoch_step = len(self.train_loader) + 1  # 한 epoch의 스텝 수
         total_step = self.arg.trainer.epochs * epoch_step  # 전체 학습 step 수
         step = 0
-        for epoch in range(self.arg.tariner.epochs):
+        for epoch in range(self.arg.trainer.epochs):
             for idx, data in enumerate(self.train_loader, 1):
                 try:
                     self.optimizer.zero_grad()
                     src_input, trg_input, trg_output = data
                     output = self.model(src_input, trg_input)
+
                     loss = self.calculate_loss(output, trg_output)
 
                     if step % self.arg.trainer.print_train_step == 0:
+                        wandb.log({"Train Loss": loss.item()})
                         print(
                             "[Train] epoch: {0:2d}  iter: {1:4d}/{2:4d}  step: {3:6d}/{4:6d}  => loss: {5:10f}".format(
-                                epoch, idx, epoch_step, step, total_step, loss.items()
+                                epoch, idx, epoch_step, step, total_step, loss.item()
                             )
                         )
 
                     if step % self.arg.trainer.print_valid_step == 0:
                         val_loss = self.valid()
+                        wandb.log({"Valid Loss": val_loss})
                         print(
                             "[Valid] epoch: {0:2d}  iter: {1:4d}/{2:4d}  step: {3:6d}/{4:6d}  => loss: {5:10f}".format(
                                 epoch, idx, epoch_step, step, total_step, val_loss
@@ -110,6 +117,7 @@ class Trainer(AbstractTools):
     def save_model(self, epoch: int, step: int) -> None:
         model_name = f"{str(step).zfill(6)}_{self.arg.model.model_type}.pth"  # 000000_{seq2seq}.pth
         model_path = os.path.join(self.arg.data.model_path, model_name)
+        os.makedirs(self.arg.data.model_path, exist_ok=True)
         torch.save(
             {
                 "epoch": epoch,
@@ -130,7 +138,7 @@ class Trainer(AbstractTools):
                 src_input, trg_input, trg_output = data
                 output = self.model(src_input, trg_input)
                 loss = self.calculate_loss(output, trg_output)
-                total_loss += loss.items()
+                total_loss += loss.item()
 
         # validation sample 확인
         input_sentence = self.tensor2sentence(src_input[0].tolist(), self.src_vocab)

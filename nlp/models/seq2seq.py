@@ -110,7 +110,9 @@ class Decoder(nn.Module):
             dropout=dropout,
             batch_first=batch_first,
         )
-        self.linear = nn.Linear(hidden_size, output_size)
+        if bidirectional:
+            hidden_size *= 2        
+        self.linear = nn.Linear(hidden_size, output_size) # [hidden_size, output_size]
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(
@@ -228,7 +230,7 @@ class Seq2Seq(nn.Module):
             if i == 0 or random.random() <= teacher_forcing_rate:
                 dec_input_i = dec_input[:, i]
             else:
-                dec_input_i = dec_output_i.topk(1)[1].sequeeze().detach()
+                dec_input_i = dec_output_i.topk(1)[1].squeeze().detach()
 
             dec_output_i, dec_hidden = self.decoder(dec_input_i, dec_hidden)
             decoder_output[:, i, :] = dec_output_i
