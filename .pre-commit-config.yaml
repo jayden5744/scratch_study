@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace  # 후행 공백 제거
+      - id: end-of-file-fixer    # 파일이 비어 있거나 줄 바꿈으로 끝나는지 확인
+      - id: check-yaml           # yaml 파일에 구문 분석 가능한 구문이 있는지 확인
+      - id: check-json           # json 파일에 구문 분석 가능한 구문이 있는지 확인
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: 'v1.2.0'
+  #   hooks:
+  #     -   id: mypy
+  - repo: https://github.com/psf/black
+    rev: '23.3.0'
+    hooks:
+      - id: black
+        language_version: python3.8
+  - repo: https://github.com/PyCQA/isort
+    rev: '5.12.0'
+    hooks:
+      - id: isort
+        args: ["--profile", "black"] # 블랙과 호환성을 맞추기 위해서 필요

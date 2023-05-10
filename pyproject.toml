@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "scratch-study"
+version = "0.1.0"
+description = ""
+authors = ["HSJeong5744 <jhs0256@gmail.com>"]
+readme = "README.md"
+packages = [{include = "scratch_study"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+ipykernel = "^6.23.0"
+numpy = "^1.24.3"
+hydra-core = "^1.3.2"
+pandas = "^2.0.1"
+sentencepiece = "0.1.97"
+torch = "1.13.1"
+wandb = "0.14.2"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+isort = "^5.12.0"
+pre-commit = "^3.3.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

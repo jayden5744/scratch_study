@@ -1,9 +1,11 @@
 import os
-import wandb
+
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
 from torch import Tensor
+
+import wandb
 
 from ..utils.utils import count_parameters
 from ..utils.weight_initialization import select_weight_initialize_method
@@ -30,7 +32,6 @@ class Trainer(AbstractTools):
         )
 
         wandb.init(config=self.arg)
-        
 
     def train(self):
         print(f"The model {count_parameters(self.model)} trainerble parameters.")

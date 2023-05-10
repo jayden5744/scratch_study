@@ -111,8 +111,8 @@ class Decoder(nn.Module):
             batch_first=batch_first,
         )
         if bidirectional:
-            hidden_size *= 2        
-        self.linear = nn.Linear(hidden_size, output_size) # [hidden_size, output_size]
+            hidden_size *= 2
+        self.linear = nn.Linear(hidden_size, output_size)  # [hidden_size, output_size]
         self.softmax = nn.LogSoftmax(dim=1)
 
     def forward(
