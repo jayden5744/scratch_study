@@ -7,6 +7,7 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader, RandomSampler
 
 from ..datasets.data_helper import TrainDataset, create_or_load_tokenizer
+from ..models.attention import Seq2SeqWithAttention
 from ..models.seq2seq import Seq2Seq
 from ..utils.metrics import calculate_bleu
 
@@ -32,8 +33,22 @@ class AbstractTools(ABC):
                 "max_sequence_size": self.arg.model.max_sequence_size,
             }
 
+        elif model_type == "attention":
+            params = {
+                "enc_d_input": self.arg.data.src_vocab_size,
+                "dec_d_input": self.arg.data.trg_vocab_size,
+                "d_hidden": self.arg.model.d_hidden,
+                "n_layers": self.arg.model.n_layers,
+                "mode": self.arg.model.mode,
+                "dropout_rate": self.arg.model.dropout_rate,
+                "bidirectional": self.arg.model.bidirectional,
+                "bias": self.arg.model.bias,
+                "batch_first": self.arg.model.batch_first,
+                "max_sequence_size": self.arg.model.max_sequence_size,
+            }
+
         else:
-            raise ValueError("param `model_type` must be one of [seq2seq]")
+            raise ValueError("param `model_type` must be one of [seq2seq, attention]")
         return params
 
     def get_model(self) -> nn.Module:
@@ -41,6 +56,9 @@ class AbstractTools(ABC):
         params = self.get_params()
         if model_type == "seq2seq":
             model = Seq2Seq(**params)
+
+        elif model_type == "attention":
+            model = Seq2SeqWithAttention(**params)
 
         else:
             raise ValueError("param `model_type` must be one of [seq2seq]")
