@@ -2,10 +2,9 @@ import os
 
 import torch
 import torch.nn as nn
+import wandb
 from omegaconf import DictConfig
 from torch import Tensor
-
-import wandb
 
 from ..utils.utils import count_parameters
 from ..utils.weight_initialization import select_weight_initialize_method
@@ -31,11 +30,11 @@ class Trainer(AbstractTools):
             label_smoothing=self.arg.trainer.label_smoothing_value,
         )
 
-        wandb.init(config=self.arg)
+        # wandb.init(config=self.arg)
 
     def train(self):
         print(f"The model {count_parameters(self.model)} trainerble parameters.")
-        wandb.watch(self.model)
+        # wandb.watch(self.model)
         epoch_step = len(self.train_loader) + 1  # 한 epoch의 스텝 수
         total_step = self.arg.trainer.epochs * epoch_step  # 전체 학습 step 수
         step = 0
@@ -49,7 +48,7 @@ class Trainer(AbstractTools):
                     loss = self.calculate_loss(output, trg_output)
 
                     if step % self.arg.trainer.print_train_step == 0:
-                        wandb.log({"Train Loss": loss.item()})
+                        # wandb.log({"Train Loss": loss.item()})
                         print(
                             "[Train] epoch: {0:2d}  iter: {1:4d}/{2:4d}  step: {3:6d}/{4:6d}  => loss: {5:10f}".format(
                                 epoch, idx, epoch_step, step, total_step, loss.item()
@@ -58,7 +57,7 @@ class Trainer(AbstractTools):
 
                     if step % self.arg.trainer.print_valid_step == 0:
                         val_loss = self.valid()
-                        wandb.log({"Valid Loss": val_loss})
+                        # wandb.log({"Valid Loss": val_loss})
                         print(
                             "[Valid] epoch: {0:2d}  iter: {1:4d}/{2:4d}  step: {3:6d}/{4:6d}  => loss: {5:10f}".format(
                                 epoch, idx, epoch_step, step, total_step, val_loss

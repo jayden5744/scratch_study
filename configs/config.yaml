@@ -1,4 +1,4 @@
 defaults:
   - data: default
-  - model: seq2seq
+  - model: attention
   - trainer: default
