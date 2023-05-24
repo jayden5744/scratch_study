@@ -1,0 +1,21 @@
+model_type: "transformer"
+max_sequence_size: 50
+d_hidden: 512
+
+dropout_rate: 0.3
+
+# weight initialization of choice [he, xavier] and Weight distribution of choice [uniform, normal]
+weight_init: "xavier"
+weight_distribution: "uniform"
+
+# Encoder
+enc_layers: 6
+enc_heads: 8
+enc_head_dim: 512
+enc_ff_dim: 1024
+
+# Decoder
+dec_layers: 6
+dec_heads: 8
+dec_head_dim: 512
+dec_ff_dim: 1024
