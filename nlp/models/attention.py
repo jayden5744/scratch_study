@@ -31,10 +31,6 @@ class DotProductAttention(nn.Module):
         attn_prob = nn.Softmax(dim=-1)(scores)
         attn_prob = self.dropout(attn_prob)
         context = torch.matmul(attn_prob, value).squeeze()
-        scores = torch.matmul(query, key.transpose(-1, -2))
-        attn_prob = nn.Softmax(dim=-1)(scores)
-        attn_prob = self.dropout(attn_prob)
-        context = torch.matmul(attn_prob, value)
         return context, attn_prob
 
 
@@ -217,7 +213,6 @@ class Seq2SeqWithAttention(nn.Module):
                 dec_input_i = dec_output_i.topk(1)[1].squeeze().detach()
 
             dec_output_i, dec_hidden, attn_prob = self.decoder(
-
                 dec_input_i, dec_hidden, encoder_output
             )
             decoder_output[:, i, :] = dec_output_i

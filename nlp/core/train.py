@@ -2,9 +2,10 @@ import os
 
 import torch
 import torch.nn as nn
-import wandb
 from omegaconf import DictConfig
 from torch import Tensor
+
+import wandb
 
 from ..utils.utils import count_parameters
 from ..utils.weight_initialization import select_weight_initialize_method

@@ -61,10 +61,13 @@ class AbstractTools(ABC):
                 "dec_heads": self.arg.model.dec_heads,
                 "dec_head_dim": self.arg.model.dec_head_dim,
                 "dec_ff_dim": self.arg.model.dec_ff_dim,
+                "padding_id": self.arg.data.pad_id,
             }
 
         else:
-            raise ValueError("param `model_type` must be one of [seq2seq, attention, transformer]")
+            raise ValueError(
+                "param `model_type` must be one of [seq2seq, attention, transformer]"
+            )
         return params
 
     def get_model(self) -> nn.Module:
@@ -79,7 +82,9 @@ class AbstractTools(ABC):
         elif model_type == "transformer":
             model = Transformer(**params)
         else:
-            raise ValueError("param `model_type` must be one of [seq2seq, attention, transformer]")
+            raise ValueError(
+                "param `model_type` must be one of [seq2seq, attention, transformer]"
+            )
         return model
 
     def get_vocab(
