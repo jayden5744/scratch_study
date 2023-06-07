@@ -1,4 +1,4 @@
 defaults:
   - data: default
-  - model: attention
+  - model: transformer
   - trainer: default

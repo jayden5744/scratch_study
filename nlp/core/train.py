@@ -2,11 +2,12 @@ import os
 
 import torch
 import torch.nn as nn
-import wandb
 from omegaconf import DictConfig
 from torch import Tensor
 
-from ..utils.utils import count_parameters
+import wandb
+
+from ..utils.utils import count_parameters, get_device
 from ..utils.weight_initialization import select_weight_initialize_method
 from .base import AbstractTools
 
@@ -14,8 +15,9 @@ from .base import AbstractTools
 class Trainer(AbstractTools):
     def __init__(self, cfg: DictConfig) -> None:
         super().__init__(cfg)
+        self.device = get_device()
         self.model = self.get_model()
-        self.model.train()
+        self.model.train().to(device=self.device)
         self.optimizer = self.init_optimizer()
 
         select_weight_initialize_method(
@@ -112,6 +114,12 @@ class Trainer(AbstractTools):
         # predict -> (batch_size, n_classes, ~)
         # target -> (batch_size, ~)
         predict = predict.transpose(1, 2)  # [batch_size, vocab_size, max_seq_size]
+        if self.device.type == "mps":
+            # mps float64를 처리할 수 없음
+            # TypeError: Cannot convert a MPS Tensor to float64 dtype as the MPS framework doesn't support float64. Please use float32 instead.
+            predict = predict.to(device="cpu")
+            target = target.to(device="cpu")
+
         return self.loss_function(predict, target)
 
     def save_model(self, epoch: int, step: int) -> None:

@@ -9,6 +9,8 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from ..utils.utils import get_device
+
 
 def exist_file(path: str) -> bool:
     if osp.exists(path):
@@ -63,6 +65,7 @@ class AbstractDataset(Dataset, metaclass=ABCMeta):
         self.src_vocab = src_vocab
         self.max_sequence_size = max_sequence_size
         self.pad = src_vocab["<pad>"]
+        self.device = get_device()
 
     @abstractmethod
     def __len__(self):
@@ -107,9 +110,9 @@ class TrainDataset(AbstractDataset):
         # Todo: eos 토큰이 잘리는게 나은지 남겨두는 게 나은지는 논의해야할 사항
         decoder_output = decoder_input[1:] + [self.eos]
         return (
-            encoder_input,
-            torch.tensor(self.padding(decoder_input)),
-            torch.tensor(self.padding(decoder_output)),
+            encoder_input.to(self.device),
+            torch.tensor(self.padding(decoder_input)).to(self.device),
+            torch.tensor(self.padding(decoder_output)).to(self.device),
         )
 
     def encoder_input2tensor(self, sentence: str) -> Tensor:
