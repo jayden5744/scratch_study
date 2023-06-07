@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+from ..utils.utils import get_device
+
 
 def get_position_encoding_table(max_sequence_size: int, d_hidden: int) -> Tensor:
     def get_angle(position: int, i: int) -> float:
@@ -20,27 +22,53 @@ def get_position_encoding_table(max_sequence_size: int, d_hidden: int) -> Tensor
     return pe_table
 
 
-def get_attn_pad_mask(seq_q: Tensor, seq_k: Tensor, padding_id: int) -> Tensor:
-    # seq_q, seq_k => [batch_size, seq_len] 입력문장
-    # eq(zero) is PAD token
-    pad_attn_mask = seq_k.data.eq(padding_id).unsqueeze(
+def get_position(inputs: Tensor) -> Tensor:
+    position = (
+        torch.arange(inputs.size(1), device=inputs.device, dtype=inputs.dtype)
+        .expand(inputs.size(0), inputs.size(1))
+        .contiguous()
+    )  # -> [bs, max_seq_size]
+    return position
+
+
+def get_padding_mask(inputs: Tensor, padding_id: int) -> Tensor:
+    """padding token에 mask를 씌우는 함수
+
+    Args:
+        input_tensor (Tensor): 입력문장, [batch_size, seq_len]
+        padding_id (int): padding id
+
+    Returns:
+        Tensor: 입력문장 padding 포함여부 [batch_size, seq_len, seq_len]
+    """
+    pad_attn_mask = inputs.data.eq(padding_id).unsqueeze(
         1
     )  # => [batch_size, 1, len_k]  True / False
     return pad_attn_mask.expand(
-        seq_k.size(0), seq_q.size(1), seq_k.size(1)
+        inputs.size(0), inputs.size(1), inputs.size(1)
     ).contiguous()  # => [batch_size, len_q, len_k]
 
 
-def get_attn_decoder_mask(dec_input: Tensor) -> Tensor:
-    subsequent_mask = (
-        torch.ones_like(dec_input)
+def get_look_ahead_mask(inputs: Tensor) -> Tensor:
+    """look ahead mask 생성 함수
+
+    자기 자신보다 미래에 있는 단어들을 참고할 수 없도록 마스킹하는 함수
+
+    Args:
+        dec_input (Tensor): 입력문장, [batch_size, seq_len]
+
+    Returns:
+        Tensor: _description_
+    """
+    look_ahead_mask = (
+        torch.ones_like(inputs)
         .unsqueeze(-1)
-        .expand(dec_input.size(0), dec_input.size(1), dec_input.size(1))
+        .expand(inputs.size(0), inputs.size(1), inputs.size(1))
     )  # => [batch_size, seq_len, seq_len]
-    subsequent_mask = subsequent_mask.triu(
+    look_ahead_mask = look_ahead_mask.triu(
         diagonal=1
     )  # upper triangular part of a matrix(2-D) => [batch_size, seq_len, seq_len]
-    return subsequent_mask
+    return look_ahead_mask.eq(1)
 
 
 class ScaledDotProductAttention(nn.Module):
@@ -189,7 +217,7 @@ class EncoderLayer(nn.Module):
         )
         mh_output = self.layer_norm_1(enc_inputs + mh_output)
         ffnn_output = self.ffnn(mh_output)
-        ffnn_output = self.layer_norm_2(ffnn_output)
+        ffnn_output = self.layer_norm_2(ffnn_output + mh_output)
         return ffnn_output
 
 
@@ -204,23 +232,42 @@ class DecoderLayer(nn.Module):
         layer_norm_epsilon: float = 1e-12,
     ) -> None:
         super().__init__()
-        self.mh_attention = MultiHeadAttention(
+        self.masked_mh = MultiHeadAttention(
             d_hidden=d_hidden, n_heads=n_heads, head_dim=head_dim, dropout=dropout
         )
         self.layer_norm_1 = nn.LayerNorm(d_hidden, eps=layer_norm_epsilon)
+        self.enc_dec_mh = MultiHeadAttention(
+            d_hidden=d_hidden, n_heads=n_heads, head_dim=head_dim, dropout=dropout
+        )
+        self.layer_norm_2 = nn.LayerNorm(d_hidden, eps=layer_norm_epsilon)
         self.ffnn = PoswiseFeedForwardNet(
             d_hidden=d_hidden, ff_dim=ff_dim, dropout=dropout
         )
-        self.layer_norm_2 = nn.LayerNorm(d_hidden, eps=layer_norm_epsilon)
+        self.layer_norm_3 = nn.LayerNorm(d_hidden, eps=layer_norm_epsilon)
 
-    # def forward(self, enc_inputs: Tensor, enc_self_attn_mask: Tensor) -> Tensor:
-    # mh_output = self.mh_attention(
-    #     enc_inputs, enc_inputs, enc_inputs, enc_self_attn_mask
-    # )
-    # mh_output = self.layer_norm_1(enc_inputs + mh_output)
-    # ffnn_output = self.ffnn(mh_output)
-    # ffnn_output = self.layer_norm_2(ffnn_output)
-    # return ffnn_output
+    def forward(
+        self,
+        dec_input: Tensor,
+        enc_outputs: Tensor,
+        dec_self_attn_mask: Tensor,
+        dec_enc_padding_mask: Tensor,
+    ) -> Tensor:
+        masked_mh_ouput = self.masked_mh(
+            dec_input, dec_input, dec_input, dec_self_attn_mask
+        )
+        masked_mh_ouput = self.layer_norm_1(masked_mh_ouput + dec_input)
+
+        enc_dec_mh_output = self.enc_dec_mh(
+            query=masked_mh_ouput,
+            key=enc_outputs,
+            value=enc_outputs,
+            attn_mask=dec_enc_padding_mask,
+        )
+        enc_dec_mh_output = self.layer_norm_2(enc_dec_mh_output + masked_mh_ouput)
+
+        ffnn_output = self.ffnn(enc_dec_mh_output)
+        ffnn_output = self.layer_norm_3(ffnn_output + enc_dec_mh_output)
+        return ffnn_output
 
 
 class Encoder(nn.Module):
@@ -261,34 +308,19 @@ class Encoder(nn.Module):
         Args:
             enc_inputs (Tensor): (bs, max_seq_size)
         """
-        position = self.get_position(enc_inputs=enc_inputs)
+        position = get_position(inputs=enc_inputs)
         conb_emb = self.src_emb(enc_inputs) + self.pos_emb(
             position
         )  # Embedding + pos_enbeding : [batch_size, max_seq_size, d_hidden]
-        enc_self_attn_mask = get_attn_pad_mask(
-            enc_inputs, enc_inputs, self.padding_id
+        padding_mask = get_padding_mask(
+            enc_inputs, self.padding_id
         )  # =>[batch_size, max_seq_size, max_seq_size]
 
         enc_outputs = conb_emb
         for layer in self.layers:
-            enc_outputs = layer(enc_outputs, enc_self_attn_mask)
+            enc_outputs = layer(enc_outputs, padding_mask)
             # enc_outputs => [batch_size, len_q, d_model]
         return enc_outputs
-
-    def get_position(self, enc_inputs: Tensor) -> Tensor:
-        position = (
-            torch.arange(
-                enc_inputs.size(1), device=enc_inputs.device, dtype=enc_inputs.dtype
-            )
-            .expand(enc_inputs.size(0), enc_inputs.size(1))
-            .contiguous()
-            + 1
-        )  # -> [bs, max_seq_size]
-        pos_mask = enc_inputs.eq(
-            self.padding_id
-        )  # padding은 True, padding 아닌 것 False 로 벡터를 만들어줌
-        position.masked_fill_(pos_mask, 0)
-        return position
 
 
 class Decoder(nn.Module):
@@ -322,36 +354,36 @@ class Decoder(nn.Module):
         )
 
         self.padding_id = padding_id
+        self.classifier = nn.Linear(d_hidden, input_dim)
 
     def forward(self, dec_inputs: Tensor, enc_output: Tensor):
-        position = self.get_position(dec_inputs=dec_inputs)
+        position = get_position(inputs=dec_inputs)
         conb_emb = self.src_emb(dec_inputs) + self.pos_emb(
             position
         )  # Embedding + pos_enbeding : [batch_size, max_seq_size, d_hidden]
-        dec_self_attn_mask = get_attn_pad_mask(
-            dec_inputs, dec_inputs, self.padding_id
+        padding_mask = get_padding_mask(
+            dec_inputs, self.padding_id
         )  # =>[batch_size, max_seq_size, max_seq_size]
 
-        dec_mask = get_attn_decoder_mask(dec_inputs)
+        look_ahead_mask = get_look_ahead_mask(dec_inputs)
 
-        # dec_self_attn_mask + dec_mask : torch.gt => 1번 레이어
+        dec_self_attn_mask = (
+            padding_mask + look_ahead_mask
+        )  # decoder 1번째 attention에 들어가는 mask
+        dec_enc_padding_msk = get_padding_mask(
+            dec_inputs, self.padding_id
+        )  # decoder 2번째 attention에 들어가는 Mask
 
-        # dec_inputs, enc_output -> get_attn_pad_mask => mask 2번 레이어
-
-    def get_position(self, dec_inputs: Tensor) -> Tensor:
-        position = (
-            torch.arange(
-                dec_inputs.size(1), device=dec_inputs.device, dtype=dec_inputs.dtype
-            )
-            .expand(dec_inputs.size(0), dec_inputs.size(1))
-            .contiguous()
-            + 1
-        )  # -> [bs, max_seq_size]
-        pos_mask = dec_inputs.eq(
-            self.padding_id
-        )  # padding은 True, padding 아닌 것 False 로 벡터를 만들어줌
-        position.masked_fill_(pos_mask, 0)
-        return position
+        dec_outputs = conb_emb
+        for layer in self.layers:
+            dec_ouputs = layer(
+                dec_outputs, enc_output, dec_self_attn_mask, dec_enc_padding_msk
+            )  # => [bs, max_seq_size, d_hidden]
+        dec_ouputs = self.classifier(dec_ouputs)  # => [bs, max_seq_size, input_dim]
+        dec_ouputs = F.log_softmax(
+            dec_ouputs, dim=-1
+        )  # => [bs, max_seq_size, input_dim]
+        return dec_ouputs
 
 
 class Transformer(nn.Module):
@@ -373,6 +405,7 @@ class Transformer(nn.Module):
         padding_id: int = 3,
     ) -> None:
         super().__init__()
+        self.device = get_device()
         self.encoder = Encoder(
             input_dim=enc_d_input,
             d_hidden=d_hidden,
@@ -383,7 +416,7 @@ class Transformer(nn.Module):
             max_sequence_size=max_sequence_size,
             padding_id=padding_id,
             dropout=dropout_rate,
-        )
+        ).to(self.device)
         self.decoder = Decoder(
             input_dim=dec_d_input,
             d_hidden=d_hidden,
@@ -394,7 +427,7 @@ class Transformer(nn.Module):
             max_sequence_size=max_sequence_size,
             padding_id=padding_id,
             dropout=dropout_rate,
-        )
+        ).to(self.device)
 
     def forward(self, enc_inputs: Tensor, dec_input: Tensor) -> Tensor:
         """Transformer

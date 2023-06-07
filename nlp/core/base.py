@@ -81,6 +81,7 @@ class AbstractTools(ABC):
 
         elif model_type == "transformer":
             model = Transformer(**params)
+
         else:
             raise ValueError(
                 "param `model_type` must be one of [seq2seq, attention, transformer]"
