@@ -3,11 +3,11 @@ learning_rate: 5e-4
 batch_size: 32
 
 # logging
-save_step: 1000 # 모델 저장할 스텝 
+save_step: 1000 # 모델 저장할 스텝
 print_train_step: 10
 print_valid_step: 100
 
-# optimizer 
+# optimizer
 optimizer: "Adam"   # choice of [Adam, AdamW]
 optimizer_b1: 0.9
 optimizer_b2: 0.999
@@ -17,3 +17,4 @@ weight_decay: 0
 
 # Regularization
 label_smoothing_value: 0.1
+early_stopping: 30

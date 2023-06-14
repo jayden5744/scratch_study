@@ -1,7 +1,7 @@
 import hydra
 from omegaconf import DictConfig
 
-from nlp.core.train import Trainer
+from src.core.train import Trainer
 
 
 @hydra.main(config_path="configs", config_name="config")
